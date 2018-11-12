@@ -21,6 +21,8 @@ import tensorflow as tf
 import model
 import preprocessing
 
+from records_utils import read_and_decode
+
 slim = tf.contrib.slim
 flags = tf.app.flags
 
@@ -42,10 +44,10 @@ flags.DEFINE_float(
     'epochs per clone but aggregates per sync replicas. So 1.0 means that '
     'each clone will go over full epoch individually, but replicas will go '
     'once across all replicas.')
-flags.DEFINE_integer('num_samples', 32739, 'Number of samples.')
-flags.DEFINE_integer('num_classes', 61, 'Number of classes')
-flags.DEFINE_integer('num_steps', 10000, 'Number of steps.')
-flags.DEFINE_integer('batch_size', 48, 'Batch size')
+flags.DEFINE_integer('num_samples', 4196, 'Number of samples.')
+flags.DEFINE_integer('num_classes', 2, 'Number of classes')
+flags.DEFINE_integer('num_steps', 30000, 'Number of steps.')
+flags.DEFINE_integer('batch_size', 2, 'Batch size')
 
 FLAGS = flags.FLAGS
 
@@ -172,6 +174,17 @@ def main(_):
                                     batch_size=FLAGS.batch_size,
                                     #capacity=5*FLAGS.batch_size,
                                     allow_smaller_final_batch=True)
+
+
+    img, label = read_and_decode("train.tfrecords")
+    #使用shuffle_batch可以随机打乱输入 next_batch挨着往下取
+    # shuffle_batch才能实现[img,label]的同步,也即特征和label的同步,不然可能输入的特征和label不匹配
+    # 比如只有这样使用,才能使img和label一一对应,每次提取一个image和对应的label
+    # shuffle_batch返回的值就是RandomShuffleQueue.dequeue_many()的结果
+    # Shuffle_batch构建了一个RandomShuffleQueue，并不断地把单个的[img,label],送入队列中
+    inputs, labels = tf.train.shuffle_batch([img, label],
+                                                    batch_size=FLAGS.batch_size, capacity=2000,
+                                                    min_after_dequeue=1000)
     
     cls_model = model.Model(is_training=True, num_classes=FLAGS.num_classes)
     preprocessed_inputs = cls_model.preprocess(inputs)
