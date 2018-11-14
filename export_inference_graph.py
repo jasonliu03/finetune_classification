@@ -72,7 +72,7 @@ def main(_):
     # Specify which gpu to be used
     os.environ["CUDA_VISIBLE_DEVICES"] = '1'
     
-    cls_model = model.Model(is_training=False, num_classes=61)
+    cls_model = model.Model(is_training=False, num_classes=2)
     if FLAGS.input_shape:
         input_shape = [
             int(dim) if dim != -1 else None 
